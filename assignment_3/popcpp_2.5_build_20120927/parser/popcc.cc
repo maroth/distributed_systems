@@ -21,7 +21,7 @@
 #endif
 
 #ifndef POPC_BUILD_ARCH
-char arch[256]= "i686-pc-Linux";
+char arch[256]= "x86_64-unknown-Linux";
 #else
 char arch[256]= POPC_BUILD_ARCH;
 #endif
