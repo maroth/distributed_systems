@@ -31,14 +31,11 @@
 
 \section{Exercise 1: Ethernet Switches}
 
-
 \subsection{Task of an Ethernet Switch}
 
-The Ethernet switch links multiple Ethernets at the Ethernet network protocol level. It operates at the level of Ethernet frames, which is forwards to different networks as required. This enables higher-level protocols to see the combined Ethernets as a single network.\footnote{Coulouris, Chapter 3.5.1}
+The Ethernet switch links multiple Ethernets at the Ethernet network protocol level. It operates at the level of Ethernet frames, which it forwards to different networks as required. This enables higher-level protocols to see the combined Ethernets as a single network.\footnote{Coulouris, Chapter 3.5.1}
 
 \subsection{Layer 2 Switch: MAC-address table}
-
-
 
 A switch has multiple ports, each with a MAC-address. Unlike normal ports, these ports run in promiscuous mode, meaning that they real all arriving messages - even the ones not addressed to their own MAC-address. 
 
@@ -63,13 +60,13 @@ Information always starts at the top layer, moves down to the bottom-most layer,
 
 The process of taking a protocol data unit from a layer n + 1 and wrapping it inside a protocl data unit from layer n is called \textit{encapsulation}.
 
-Encapsulation is used in communications systems because it enables a clear separation of concerns between the layers. It enables the lower layers to ignore the contents of the payload they are transmittig, and allows them to only focus on their own protocol. This also enables the lower layers to work with arbitrary upper-layer protocols, without knowing them.
+Encapsulation is used in communications systems because it enables a clear separation of concerns between the layers. It enables the lower layers to ignore the contents of the payload they are transmittig, and allows them to only focus on their own protocol. This also enables the lower layers to work with arbitrary upper-layer protocols, without knowing them. \footnote{Coulouris Chapter 3.4}
 
 \section{Exercise 3: Standards}
 
 Communication between different computers or other automated devices can only work if the various devices speak a common language. If all devices that need to communicate are manufactured by the same organization at the same time, it is possible to define their communication as any arbitrary well-defined protocol.
 
-However, this is mostly not the case. Systems from different vendors, and systems built at different times, are expected to communicatie with each other. With the Internet, devices as diverse as a fire alarm sensor should and a high-performance cloud backend system need be able to communicate.
+However, this is mostly not the case. Systems from different vendors, and systems built at different times, are expected to communicatie with each other. With the Internet, devices as diverse as a fire alarm sensor and a high-performance cloud backend system need be able to communicate.
 
 The role of standards in communication systems is to provide a common language for all systems to communicate. These standards, if they are followed by everyone, guarantee interoperability between various systems.
 
@@ -87,7 +84,7 @@ IPv6 completely removed checksums for those reasons.
 
 \subsection{1b}
 
-This is because the data offset, that determines the size of the header, has exactly four bits and counts 32 bit words. So if we set all the data offset bits to 1, we have a total header size of 15 words (60 bytes). The minimal TCP header is 20 bytes long, so at best we get the remaining 40 bytes for the options field.
+This is because the data offset, that determines the size of the header, has exactly four bits and counts 32 bit words. So if we set all the data offset bits to 1, we have a total header size of 15 words (60 bytes). The minimal TCP header is 20 bytes long, so at most we get the remaining 40 bytes for the options field.
 
 \subsection{1c}
 
@@ -122,27 +119,33 @@ Here we have to assume large files, so overhead might be an issue. The order of 
 
 \subsection{4c: User Location}
 
+User location is well-suited for use with UDP. A UDP packet for the request, and one for the response. It is trivial for the client to try requesting again if no answer was found within a certain timeframe. 
+However, Finger actually runs on TCP. I'm not sure why.
+
 \subsection{4d: Information browsing}
 
-In HTTP, packets must arrive in the correct order, otherwise the web page will not be 
+In HTTP, packets must arrive in the correct order, otherwise the web page will not be displayed correctly. Also, the HTTP protocol assumes a reliable protocol, as it does not handle re-transmission in itself. Therefore, TCP is the appropriate protocol.
 
 \subsection{4e: Remote procedure call}
 
-In a remote procedure call, the order of the packages is of paramount importance. Because procedure calls might have side-effects, their calls must not be re-ordered.
+In a remote procedure call, the order of the packages is of paramount importance. Because procedure calls might have side-effects, their calls must not be re-ordered. Also, in RCP we want to use a reliable protocol for sure, as we don't want to implement any logic that handles failures in our RCP code. TCP!
 
 \section{Exercise 5: Centralized Web}
 
-\subsection{Registering Domains}
+\subsection{Registering and Resolving Domains}
 
 To manage the domains, there must be an organization that is responsible for assigning domain names to organizations who want to use them. Steps to make this less centralized have already been taken by enabling pretty much anyone to start their own top-level domain and license the domains for it however they want to. However, the ICANN still is in full control over all domains.
-For a truly decentralized domain name system, it is possible to use blockchain technology. Namecoin \footnote{url{https://namecoin.org/}} is such an attempt. Using it, you can get a .bit domain without any dealings with ICANN.
-
-\subsection{Top-Level DNS}
-
-Once domains are registered, they must be mapped to IP addresses. 
+For a truly decentralized domain name system, it is possible to use blockchain technology. Namecoin \footnote{\url{https://namecoin.org/}} is such an attempt. Using it, you can get a .bit domain without any dealings with ICANN.
 
 \subsection{Tier 1 Networks routing using settlement-free peering}
 
+The Internet is a collection if networks that exchange traffic between each other. However, at the topmost level, there are few Tier 1 networks that handle much of the data transfer at the very top level. These Tier 1 networks are few in number and control lots of critical infrastructure. If a Tier 1 provider failed, it is possible that parts of the Internet would no longer work as well as before.
 
+It might be possible to use more of a peer-to-peer approach for networking, but a huge costs concerning speed.
+
+\subsection{DDOS attack mitigation requires expensive hardware}
+
+In an ideal Internet, every network participant enjoys the same rights and everyones packets are treated equaly. However, with great power comes great responsibility: Evil actors might send illegitimate packets to distrupt services. If these packets come from a wide array of servers, they are called distributed denial of service attacks. These attacks are hard to locate without specialized hardware that implements protocols such as netflow. With netflow-enabled routers, it is possible to do deep packet inspection of packets passing through routers, so that it is possible to locate the source of illegitimate packets participating in denial of service attacks. \footnote{\url{https://idea.popcount.org/2016-09-20-strange-loop---ip-spoofing/}}
+However, routers that support netflow are very expensive, and if they are required to participate in the Internet the Internet will have large hurdles to entry and no longer be a decentralized network of peers.
 
 \end{document}

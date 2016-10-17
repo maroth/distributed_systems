@@ -156,14 +156,14 @@ The core problems here is encryption of the responses:
 
     \item Reliability: A distributed system can adapt to a single component system failing, while a centralized system has a much higher probability of no longer providing a service upon failure of a component. Systems like the Internet have been working without significant downtime for decades.
 
-    \item Locality: Some workloads are necessarily distributed and can profit from being worked in in a distributed system. For example I might want to search the logs of of all my point-of-sale systems. Rather than copy all the logs to a centralized system and run the search there, I can save storage space and bandwidth by having a search run on each of the component systems and aggregate the results.
+    \item Locality: Some workloads are necessarily distributed and can profit from being worked on in a distributed system. For example I might want to search the logs of of all my point-of-sale systems. Rather than copy all the logs to a centralized system and run the search there, I can save storage space and bandwidth by having a search run on each of the component systems and aggregate the results.
 \end{itemize}
 
 \subsection{Disadvantages of Distributed Systems}
 
 \begin{itemize}
 
-    \item Complexity: A distributed system is inherently more complex than a centralized system. It needs to deal with communication between its components, handle failing components, handle the lack of global time instant propagation. It exists in a world of congested networks and transmission errors, and is exposed to security risks due to being exposed to some network.
+    \item Complexity: A distributed system is inherently more complex than a centralized system. It needs to deal with communication between its components, handle failing components, handle the lack of global time and the lack of instant error-free data propagation. It exists in a world of congested networks and transmission errors.
 
     \item Security: A distributed system has a higher security risk due to necessarily being exposed to some type of network. Any exposure leads to risk. A centralized system may be air-gapped and thus fully secured against network attacks from the outside.
 
