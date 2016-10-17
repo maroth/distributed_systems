@@ -1,0 +1,131 @@
+\documentclass[a4paper]{article}
+
+\usepackage{listings}
+\usepackage[T1]{fontenc}
+\usepackage{color}
+\usepackage{url}
+\usepackage{pxfonts}
+
+\lstset{frame=tb,
+    aboveskip=3mm,
+    belowskip=3mm,
+    showstringspaces=false,
+    columns=flexible,
+    basicstyle={\small\ttfamily},
+    numbers=none,
+    numberstyle=\tiny\color{gray},
+    keywordstyle=\color{blue},
+    commentstyle=\color{dkgreen},
+    stringstyle=\color{mauve},
+    breaklines=true,
+    breakatwhitespace=true,
+    tabsize=3
+}
+
+\title{Distributed Systems - Assignment 3}
+
+\author{Markus Roth}
+
+\begin{document}
+\maketitle
+
+\section{Semantics}
+
+\subsection{async seq void setID(int i); sync seq int getID();}
+
+\begin{lstlisting}
+Hello World from object : 1
+Hello World from object : 2
+Hello World from object : 3
+Hello World from object : 0
+Sum of objects objects id = 6
+\end{lstlisting}
+
+Since the setId method is asynchronous, all the three setID calls are started shortly after each other and happen concurrently. Since the set and get methods are sequential, the get methods waits until the last set method is finished, therefore giving the correct sum of 6.
+
+\subsection{async seq void setID(int i); sync conc int getID();}
+
+\begin{lstlisting}
+Sum of objects objects id = -4
+Hello World from object : 1
+Hello World from object : 3
+Hello World from object : 2
+Hello World from object : 0
+\end{lstlisting}
+
+Now the get method is concurrent rather than synchronous, it will get the values immediately (there is no defined order between conc and seq calls). This does not give the set methods time to actually set the values in time, therefore we get the initial values of -1 added four times.
+
+\subsection{async conc void setID(int i); sync seq int getID();}
+
+\begin{lstlisting}
+Sum of objects objects id = -4
+Hello World from object : 0
+Hello World from object : 3
+Hello World from object : 1
+Hello World from object : 2
+\end{lstlisting}
+
+There is no defined order between conc and seq methods. As the set is async and conc, they are all executed at the same time and they return immediately. The seq getId method runs immediately, and adds the initial -1 value four times.
+
+
+\subsection{async conc void setID(int i); sync conc int getID();}
+
+\begin{lstlisting}
+Sum of objects objects id = -4
+Hello World from object : 1
+Hello World from object : 0
+Hello World from object : 2
+Hello World from object : 3
+\end{lstlisting}
+
+Since both methods are conc, they don't wait for each other. Since the setters are async, the getters immediately start running and don't wait for the setters to be finished. Therefore, we get the initial values added four times.
+
+\subsection{sync seq void setID(int i); sync seq int getID();}
+
+\begin{lstlisting}
+Hello World from object : 0
+Hello World from object : 1
+Hello World from object : 2
+Hello World from object : 3
+Sum of objects objects id = 6
+\end{lstlisting}
+
+Both methods are sync and seq, so the caller always wits for the method to be over before calling the next one. This gives us the correct sum at the end.
+
+\subsection{sync seq void setID(int i); sync conc int getID();}
+
+\begin{lstlisting}
+Hello World from object : 0
+Hello World from object : 1
+Hello World from object : 2
+Hello World from object : 3
+Sum of objects objects id = 6
+\end{lstlisting}
+
+Since the set calls are sync, the program only calls the getters after all the setters have returned. Therefore, we get the correct sum of 6 at the end.
+
+\subsection{sync conc void setID(int i); sync seq int getID();}
+
+\begin{lstlisting}
+Hello World from object : 0
+Hello World from object : 1
+Hello World from object : 2
+Hello World from object : 3
+Sum of objects objects id = 6
+\end{lstlisting}
+
+Since the set calls are sync, the program only calls the getters after all the setters have returned. Therefore, we get the correct sum of 6 at the end.
+
+\subsection{sync conc void setID(int i); sync conc int getID();}
+
+\begin{lstlisting}
+Hello World from object : 0
+GHello World from object : 1
+Hello World from object : 2
+Hello World from object : 3
+Sum of objects objects id = 6
+\end{lstlisting}
+
+Since the set calls are sync, the program waits to execute the next call until they are done. Therefore, we get the setters executed in order and the correct sum at the end.
+
+\end{document}
