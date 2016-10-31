@@ -1,0 +1,7 @@
+*.aggregated
+*.table
+*converted*
+*.gp
+*.eps
+*_1.tex
+*_4.tex
