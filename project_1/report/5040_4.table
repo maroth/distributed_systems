@@ -1,0 +1,14 @@
+\begin{table}[]
+\centering
+\begin{tabular}{|l|l|l|l|}
+\hline
+Workers & Initialisation (s) & Sending (s) & Computing (s)\\ \hline
+1 & 0.449573 & 19.25264 & 132.4628 \\ \hline
+2 & 1.178954 & 38.01076 & 58.53002 \\ \hline
+4 & 1.613828 & 45.09404 & 55.93592 \\ \hline
+8 & 3.433806 & 70.9933 & 23.45946 \\ \hline
+16 & 4.585312 & 79.31578 & 16.16644 \\ \hline
+\end{tabular}
+\caption{N=5040 Cores=4}
+\label{5040-4}
+\end{table}

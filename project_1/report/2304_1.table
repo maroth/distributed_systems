@@ -1,0 +1,14 @@
+\begin{table}[]
+\centering
+\begin{tabular}{|l|l|l|l|}
+\hline
+Workers & Initialisation (s) & Sending (s) & Computing (s)\\ \hline
+1 & 0.0889021666667 & 0.120138053333 & 37.2009733333 \\ \hline
+2 & 0.4618156 & 3.808026 & 49.73261 \\ \hline
+4 & 1.196326 & 6.987342 & 23.21903 \\ \hline
+8 & 1.637381 & 7.721645 & 14.87232 \\ \hline
+16 & 3.524031 & 11.89726 & 7.972387 \\ \hline
+\end{tabular}
+\caption{N=2304 Cores=1}
+\label{2304-1}
+\end{table}
