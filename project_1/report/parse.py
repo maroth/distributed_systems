@@ -5,15 +5,14 @@ import collections
 import itertools
 
 plot_template= """
-set term epslatex
-# some line types with different colors, you can use them by using line styles in the plot command afterwards (linestyle X)
+set term epslatex 
 set style line 1 lt 1 lc rgb "#FF0000" lw 7 # red
 set style line 2 lt 1 lc rgb "#00FF00" lw 7 # green
 set style line 3 lt 1 lc rgb "#0000FF" lw 7 # blue
 set style line 4 lt 1 lc rgb "#000000" lw 7 # black
 
 set output "{matrix_size}_{cores}.eps"
-set title "N={matrix_size} Cores={cores}"
+set title "N={matrix_size} {cores_label}"
 
 # indicates the labels
 set xlabel "Workers"
@@ -28,8 +27,8 @@ set grid x,y
 set key top left
 
 # indicates the ranges
-set yrange [0:] # example of a closed range (points outside will not be displayed)
-set xrange [1:] # example of a range closed on one side only, the max will determined automatically
+set yrange [0:] 
+set xrange [1:] 
 
 plot "{matrix_size}_{cores}.aggregated" u ($1):($5) with lines linestyle 1 title "total time", \
      "{matrix_size}_{cores}.aggregated" u ($1):($2) with lines linestyle 2 title "init time", \
@@ -39,16 +38,12 @@ plot "{matrix_size}_{cores}.aggregated" u ($1):($5) with lines linestyle 1 title
 
 table_template = """\\begin{table}[]
 \centering
-\\begin{tabular}{|l|l|l|l|}
+\\begin{tabular}{|l|l|l|l|l|l|}
 \hline
-Workers & Initialisation (s) & Sending (s) & Computing (s)\\\\ \hline
-1 & {1_init} & {1_send} & {1_comp} \\\\ \hline
-2 & {2_init} & {2_send} & {2_comp} \\\\ \hline
-4 & {3_init} & {3_send} & {3_comp} \\\\ \hline
-8 & {4_init} & {4_send} & {4_comp} \\\\ \hline
-16 & {5_init} & {5_send} & {5_comp} \\\\ \hline
+Workers & Initialisation (s) & Sending (s) & Computing (s) & Total Time (s) & Speedup \\\\ \hline
+{lines}
 \end{tabular}
-\caption{N={matrix_size} Cores={cores}}
+\caption{N={matrix_size} {cores}}
 \label{my-label}
 \end{table}
 """
@@ -78,6 +73,8 @@ for outputfile in os.listdir("../results/"):
                     compute_time_sum += float(line[5])
                     entry = (init_time_sum / count, send_time_sum / count, compute_time_sum / count)
                     result[(matrix_size, cores, workers)] = entry
+                    if workers == 1 and cores == 1:
+                      result[(matrix_size, 4, workers)] = entry
 
 
 sorted_result = collections.OrderedDict(sorted(result.items()))
@@ -90,25 +87,44 @@ for matrix_size, cores_and_workers in itertools.groupby(sorted_result, lambda x:
         with open(data_file, "w") as outputfile:
             with open(table_file, "w") as tablefile:
                 table = table_template.replace("{matrix_size}", str(matrix_size))
-                table = table.replace("{cores}", str(cores))
+                cores_string = ""
+                if cores == 1:
+                  cores_string = "(1 Core per Machine)"
+                elif cores == 4:
+                  cores_string = "(4 Cores per Machine)"
+                table = table.replace("{cores}", cores_string)
                 table = table.replace("my-label", "{}-{}".format(matrix_size, cores))
                 count = 0
+                table_lines = ""
+                sequential_time = 0
                 for item in worker:
+                    table_line_template = "{workers} & {init} & {send} & {comp} & {total} & {speedup} \\\\ \hline"
+                    size, cores, workers = item
                     count += 1
                     times = result[item]
                     init_time = times[0]
                     send_time = times[1]
                     compute_time = times[2]
                     total_time = init_time + send_time + compute_time
+                    if workers == 1:
+                      sequential_time = total_time
+                    speedup = float(sequential_time) / total_time
                     outputfile.write("{} {} {} {} {}\n".format(item[2], init_time, send_time, compute_time, total_time))
-                    table = table.replace("{" + str(count) + "_init}", str(init_time))
-                    table = table.replace("{" + str(count) + "_send}", str(send_time))
-                    table = table.replace("{" + str(count) + "_comp}", str(compute_time))
+                    table_line = table_line_template.replace("{workers}", str(workers))
+                    table_line = table_line.replace("{init}", "{0:.3f}".format(init_time))
+                    table_line = table_line.replace("{send}", "{0:.3f}".format(send_time))
+                    table_line = table_line.replace("{comp}", "{0:.3f}".format(compute_time))
+                    table_line = table_line.replace("{total}", "{0:.3f}".format(total_time))
+                    table_line = table_line.replace("{speedup}", "{0:.3f}".format(speedup))
+                    table_lines += table_line
+                    table_lines += "\n"
+                table = table.replace("{lines}", table_lines)
                 tablefile.write(table)
 
         plot_file = "{}_{}.gp".format(matrix_size, cores)
         with open(plot_file, "w") as plotfile:
             plot = plot_template.replace("{matrix_size}", str(matrix_size))
+            plot = plot.replace("{cores_label}", "(" + str(cores) + " Cores per Machine)")
             plot = plot.replace("{cores}", str(cores))
             plotfile.write(plot)
         os.system("gnuplot {}".format(plot_file))
