@@ -7,11 +7,11 @@ import itertools
 plot_template= """
 set term epslatex 
 set style line 1 lt 1 lc rgb "#FF0000" lw 7 # red
-set style line 2 lt 1 lc rgb "#00FF00" lw 7 # green
-set style line 3 lt 1 lc rgb "#0000FF" lw 7 # blue
-set style line 4 lt 1 lc rgb "#000000" lw 7 # black
-set style line 5 lt 1 lc rgb "#CD00CD" lw 7 # purple
-set style line 7 lt 3 lc rgb "#000000" lw 7 # black, dashed line
+set style line 2 lt 3 lc rgb "#00FF00" lw 5 # green
+set style line 3 lt 3 lc rgb "#0000FF" lw 5 # blue
+set style line 4 lt 3 lc rgb "#000000" lw 5 # black
+set style line 5 lt 3 lc rgb "#CD00CD" lw 3 # purple
+set style line 7 lt 3 lc rgb "#000000" lw 3 # black, dashed line
 
 set output "{matrix_size}_{cores}.eps"
 set title "N={matrix_size} {cores_label}"
@@ -105,6 +105,11 @@ sorted_result = collections.OrderedDict(sorted(result.items()))
 speedup_table_cores = collections.defaultdict(list)
 speedup_table_no_cores = collections.defaultdict(list)
 
+efficiency_table_cores = collections.defaultdict(list)
+efficiency_table_no_cores = collections.defaultdict(list)
+
+
+
 for matrix_size, cores_and_workers in itertools.groupby(sorted_result, lambda x: x[0]):
     for cores, worker in itertools.groupby(cores_and_workers, lambda x: x[1]):
         data_file= "{}_{}.aggregated".format(matrix_size, cores)
@@ -146,13 +151,15 @@ for matrix_size, cores_and_workers in itertools.groupby(sorted_result, lambda x:
                         number_of_cores = 1
 
                     speedup = float(sequential_time) / total_time
+                    efficiency = speedup / number_of_cores
 
                     if cores == 1:
                         speedup_table_no_cores[workers].append(str(speedup))
+                        efficiency_table_no_cores[workers].append(str(efficiency))
                     elif cores == 4:
                         speedup_table_cores[workers].append(str(speedup))
+                        efficiency_table_cores[workers].append(str(efficiency))
 
-                    efficiency = speedup / number_of_cores
                     outputfile.write("{} {} {} {} {} {} {}\n".format(item[2], init_time, send_time, compute_time, total_time, avg_worker_waiting_time, avg_worker_computing_time))
                     table_line = table_line_template.replace("{workers}", str(workers))
                     table_line = table_line.replace("{cores}", "{0}".format(number_of_cores))
@@ -192,7 +199,7 @@ with open(speedup_no_cores_data_file, "w") as speedupfile:
         speedupfile.write(str(workers) + " ")
         speedupfile.write(" ".join(speedup_table_no_cores[workers]))
         speedupfile.write("\n")
-os.system("gnuplot {}".format("speedu_nocores.gp"))
+os.system("gnuplot {}".format("speedup_no_cores.gp"))
 
 speedup_cores_data_file = "speedup_cores.aggregated"
 with open(speedup_cores_data_file, "w") as speedupfile:
@@ -201,5 +208,21 @@ with open(speedup_cores_data_file, "w") as speedupfile:
         speedupfile.write(" ".join(speedup_table_cores[workers]))
         speedupfile.write("\n")
 os.system("gnuplot {}".format("speedup_cores.gp"))
+
+efficiency_no_cores_data_file = "efficiency_no_cores.aggregated"
+with open(efficiency_no_cores_data_file, "w") as efficiencyfile:
+    for workers in efficiency_table_no_cores:
+        efficiencyfile.write(str(workers) + " ")
+        efficiencyfile.write(" ".join(efficiency_table_no_cores[workers]))
+        efficiencyfile.write("\n")
+os.system("gnuplot {}".format("efficiency_no_cores.gp"))
+
+efficiency_cores_data_file = "efficiency_cores.aggregated"
+with open(efficiency_cores_data_file, "w") as efficiencyfile:
+    for workers in efficiency_table_cores:
+        efficiencyfile.write(str(workers) + " ")
+        efficiencyfile.write(" ".join(efficiency_table_cores[workers]))
+        efficiencyfile.write("\n")
+os.system("gnuplot {}".format("efficiency_cores.gp"))
 
 os.system("pdflatex report.tex")
