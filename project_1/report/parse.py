@@ -52,6 +52,19 @@ Workers & Threads & Init (s) & Send (s) & Comp (s) & Total(s) & wwa (s) & wca (s
 \end{table}
 """
 
+seq_table_template = """
+\\begin{table}[]
+\centering
+\\begin{tabular}{|l|l|l|l|l|l|l|}
+\hline
+Matrix Size & Init & Send (s) & Comp (s) & Total(s) & Worker Waiting (s) & Worker Computing (s) \\\\ \hline
+{lines}
+\end{tabular}
+\caption{Sequential Performance Summary}
+\label{seq-table}
+\end{table}
+"""
+
 result = {}
 
 for outputfile in os.listdir("../results/"):
@@ -110,87 +123,113 @@ efficiency_table_no_cores = collections.defaultdict(list)
 
 
 
-for matrix_size, cores_and_workers in itertools.groupby(sorted_result, lambda x: x[0]):
-    for cores, worker in itertools.groupby(cores_and_workers, lambda x: x[1]):
-        data_file= "{}_{}.aggregated".format(matrix_size, cores)
-        table_file= "{}_{}.table".format(matrix_size, cores)
-        print("Generating for N={} and Cores={}".format(matrix_size, cores))
-        with open(data_file, "w") as outputfile:
-            with open(table_file, "w") as tablefile:
-                table = table_template.replace("{matrix_size}", str(matrix_size))
-                cores_string = ""
-                if cores == 1:
-                  cores_string = "(16 Machines x 1 Core)"
-                elif cores == 4:
-                  cores_string = "(4 Machines x 4 Cores)"
-                table = table.replace("{cores}", cores_string)
-                table = table.replace("my-label", "{}-{}".format(matrix_size, cores))
-                count = 0
-                table_lines = ""
-                sequential_time = 0
-                for item in worker:
-                    table_line_template = "{workers} & {cores} & {init} & {send} & {comp} & {total} & {avg_worker_waiting} & {avg_worker_computing} & {speedup} & {efficiency} \\\\ \hline"
-                    size, cores, workers = item
-                    count += 1
-                    times = result[item]
-                    init_time = times[0]
-                    send_time = times[1]
-                    compute_time = times[2]
-                    avg_worker_waiting_time = times[3]
-                    avg_worker_computing_time = times[4]
-
-                    total_time = init_time + send_time + compute_time
-
+seq_plot_file = "seq.aggregated"
+seq_table_lines = ""
+with open(seq_plot_file, "w") as seqplotfile:
+    seq_table_file = "seq.table"
+    for matrix_size, cores_and_workers in itertools.groupby(sorted_result, lambda x: x[0]):
+        for cores, worker in itertools.groupby(cores_and_workers, lambda x: x[1]):
+            plot_file = "{}_{}.aggregated".format(matrix_size, cores)
+            table_file= "{}_{}.table".format(matrix_size, cores)
+            print("Generating for N={} and Cores={}".format(matrix_size, cores))
+            with open(plot_file, "w") as plotfile:
+                with open(table_file, "w") as tablefile:
+                    table = table_template.replace("{matrix_size}", str(matrix_size))
+                    cores_string = ""
                     if cores == 1:
-                        number_of_cores = workers
+                      cores_string = "(16 Machines x 1 Core)"
                     elif cores == 4:
-                        number_of_cores = workers * 4
+                      cores_string = "(4 Machines x 4 Cores)"
+                    table = table.replace("{cores}", cores_string)
+                    table = table.replace("my-label", "{}-{}".format(matrix_size, cores))
+                    count = 0
+                    table_lines = ""
+                    sequential_time = 0
+                    for item in worker:
+                        table_line_template = "{workers} & {cores} & {init} & {send} & {comp} & {total} & {avg_worker_waiting} & {avg_worker_computing} & {speedup} & {efficiency} \\\\ \hline"
+                        size, cores, workers = item
+                        count += 1
+                        times = result[item]
+                        init_time = times[0]
+                        send_time = times[1]
+                        compute_time = times[2]
+                        avg_worker_waiting_time = times[3]
+                        avg_worker_computing_time = times[4]
 
-                    if workers == 1:
-                        sequential_time = total_time
-                        number_of_cores = 1
+                        total_time = init_time + send_time + compute_time
 
-                    speedup = float(sequential_time) / total_time
-                    efficiency = speedup / number_of_cores
+                        if cores == 1:
+                            number_of_cores = workers
+                        elif cores == 4:
+                            number_of_cores = workers * 4
 
-                    if cores == 1:
-                        speedup_table_no_cores[workers].append(str(speedup))
-                        efficiency_table_no_cores[workers].append(str(efficiency))
-                    elif cores == 4:
-                        speedup_table_cores[workers].append(str(speedup))
-                        efficiency_table_cores[workers].append(str(efficiency))
+                        if workers == 1:
+                            sequential_time = total_time
+                            number_of_cores = 1
 
-                    outputfile.write("{} {} {} {} {} {} {}\n".format(item[2], init_time, send_time, compute_time, total_time, avg_worker_waiting_time, avg_worker_computing_time))
-                    table_line = table_line_template.replace("{workers}", str(workers))
-                    table_line = table_line.replace("{cores}", "{0}".format(number_of_cores))
-                    table_line = table_line.replace("{init}", "{0:.3f}".format(init_time))
-                    table_line = table_line.replace("{send}", "{0:.3f}".format(send_time))
-                    table_line = table_line.replace("{comp}", "{0:.3f}".format(compute_time))
-                    table_line = table_line.replace("{total}", "{0:.3f}".format(total_time))
-                    table_line = table_line.replace("{avg_worker_waiting}", "{0:.3f}".format(avg_worker_waiting_time))
-                    table_line = table_line.replace("{avg_worker_computing}", "{0:.3f}".format(avg_worker_computing_time))
-                    table_line = table_line.replace("{speedup}", "{0:.3f}".format(speedup))
-                    table_line = table_line.replace("{efficiency}", "{0:.3f}".format(efficiency))
+                        speedup = float(sequential_time) / total_time
+                        efficiency = speedup / number_of_cores
 
-                    table_lines += table_line
-                    table_lines += "\n"
-                table = table.replace("{lines}", table_lines)
-                tablefile.write(table)
+                        if cores == 1:
+                            speedup_table_no_cores[workers].append(str(speedup))
+                            efficiency_table_no_cores[workers].append(str(efficiency))
+                        elif cores == 4:
+                            speedup_table_cores[workers].append(str(speedup))
+                            efficiency_table_cores[workers].append(str(efficiency))
 
-        plot_file = "{}_{}.gp".format(matrix_size, cores)
-        with open(plot_file, "w") as plotfile:
-            plot = plot_template.replace("{matrix_size}", str(matrix_size))
-            if cores == 4:
-                plot = plot.replace("{x-axis-label}", "Workers (4 Threads per Worker)")
-                plot = plot.replace("{cores_label}", "(4 Cores per Machine)")
-            elif cores == 1:
-                plot = plot.replace("{x-axis-label}", "Workers (1 Thread per Worker)")
-                plot = plot.replace("{cores_label}", "(1 Core per Machine)")
+                        plotfile.write("{} {} {} {} {} {} {}\n".format(workers, init_time, send_time, compute_time, total_time, avg_worker_waiting_time, avg_worker_computing_time))
 
-            plot = plot.replace("{cores}", str(cores))
-            plotfile.write(plot)
-        os.system("gnuplot {}".format(plot_file))
+                        if cores == 1 and workers == 1:
+                            to_write = "{} {} {} {} {} {} {}\n".format(matrix_size, init_time, send_time, compute_time, total_time, avg_worker_waiting_time, avg_worker_computing_time)
+                            print to_write
+                            seqplotfile.write(to_write)
+                            seq_table_line_template = "{matrix_size} & {init} & {send} & {comp} & {total} & {avg_worker_waiting} & {avg_worker_computing} \\\\ \hline"
+                            seq_table_line = seq_table_line_template.replace("{init}", "{0:.3f}".format(init_time))
+                            seq_table_line = seq_table_line.replace("{matrix_size}", "{}".format(matrix_size))
+                            seq_table_line = seq_table_line.replace("{send}", "{0:.3f}".format(send_time))
+                            seq_table_line = seq_table_line.replace("{comp}", "{0:.3f}".format(compute_time))
+                            seq_table_line = seq_table_line.replace("{total}", "{0:.3f}".format(total_time))
+                            seq_table_line = seq_table_line.replace("{avg_worker_waiting}", "{0:.3f}".format(avg_worker_waiting_time))
+                            seq_table_line = seq_table_line.replace("{avg_worker_computing}", "{0:.3f}".format(avg_worker_computing_time))
+                            seq_table_lines += seq_table_line
+                            seq_table_lines += "\n"
 
+
+                        table_line = table_line_template.replace("{workers}", str(workers))
+                        table_line = table_line.replace("{cores}", "{0}".format(number_of_cores))
+                        table_line = table_line.replace("{init}", "{0:.3f}".format(init_time))
+                        table_line = table_line.replace("{send}", "{0:.3f}".format(send_time))
+                        table_line = table_line.replace("{comp}", "{0:.3f}".format(compute_time))
+                        table_line = table_line.replace("{total}", "{0:.3f}".format(total_time))
+                        table_line = table_line.replace("{avg_worker_waiting}", "{0:.3f}".format(avg_worker_waiting_time))
+                        table_line = table_line.replace("{avg_worker_computing}", "{0:.3f}".format(avg_worker_computing_time))
+                        table_line = table_line.replace("{speedup}", "{0:.3f}".format(speedup))
+                        table_line = table_line.replace("{efficiency}", "{0:.3f}".format(efficiency))
+
+                        table_lines += table_line
+                        table_lines += "\n"
+                    table = table.replace("{lines}", table_lines)
+                    tablefile.write(table)
+
+            plot_file = "{}_{}.gp".format(matrix_size, cores)
+            with open(plot_file, "w") as plotfile:
+                plot = plot_template.replace("{matrix_size}", str(matrix_size))
+                if cores == 4:
+                    plot = plot.replace("{x-axis-label}", "Workers (4 Threads per Worker)")
+                    plot = plot.replace("{cores_label}", "(4 Cores per Machine)")
+                elif cores == 1:
+                    plot = plot.replace("{x-axis-label}", "Workers (1 Thread per Worker)")
+                    plot = plot.replace("{cores_label}", "(1 Core per Machine)")
+
+                plot = plot.replace("{cores}", str(cores))
+                plotfile.write(plot)
+            os.system("gnuplot {}".format(plot_file))
+
+with open(seq_table_file, "w") as seqtablefile:
+    seq_table = seq_table_template.replace("{lines}", seq_table_lines)
+    seqtablefile.write(seq_table)
+
+os.system("gnuplot seq_plot.gp")
 
 
 speedup_no_cores_data_file = "speedup_no_cores.aggregated"
