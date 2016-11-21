@@ -29,23 +29,36 @@
 \begin{document}
 \maketitle
 
-\subsection{Exercise 1: Synchronization}
+\section{Exercise 1: Synchronization}
 
+I assume the indexing and search engine works in the following manner: A large number of machines work together. Each machine uses multiple threads to visit and download websites. The downloaded website is processed by stripping out irrelevant information, then added to various indexes. These indexes are also distributed across many different machines. Search queries are handled by a load balancer distributin them to many machines. Each of the machines then parses the query, decides what index to use, and forwards the query to one or more machines that serve the indexes.
 
+There are therefore nodes for: Spidering, preprocessing and indexing, hosting indexes and content, load balancing and query forwarding / result merging.
+
+Websites can and do often change, so the time of retrieval is important. Multiple spiders might read the same website only a sshort time after each other, so their times need to be synchronized so the index can always show the most recent copy. 
+
+The spiders also need to share state about what sites they already visited and at what time, to schedule re-visiting of websites at certain intervals. 
+
+So all the nodes need to synchronize their wall-clock times, and need to have some synchronized state. 
 
 \section{Exercise 2: Vector Clocks}
 
-\subsection{Part 1: Laport Clock}
+\subsection{Part 1: Lamport Clock}
 
 The rules are:
 
+\begin{lstlisting}
 e is a local event or a send event:
-If e has no local predecessor, L(e) = 1 else L(e) = L(e’) + 1
+If e has no local predecessor, L(e) = 1 else L(e) = L(e') + 1
 
 e is a receive event, s the corresponding send event:
 If e has no local predecessor, L(e) = L(s) +1
-If e’ is the local predecessor of e, L(e) = max { L(s), L(e’) } + 1 
+If e’ is the local predecessor of e, L(e) = max { L(s), L(e') } + 1 
+\end{lstlisting}
 
+Therefore the clocks states are:
+
+\begin{lstlisting}
 b: 1 (send event, no local predecessor)
 f: 1 (send event, no local predecessor)
 a: 2 (receive event, no local predecessor, send event f = 1)
@@ -56,9 +69,11 @@ d: 3 (receive event, local predesessor a = 2, sender b = 1)
 j: 4 (local event, local predecessor e = 3)
 h: 4 (receive event, local predecessor g = 2, sender e = 3)
 i: 5 (receive event, local predecessor j = 4, sender g = 2)
+\end{lstlisting}
 
 \subsection{Part 2: Vector Clock}
 
+\begin{lstlisting}
 b: (0, 1, 0)
 f: (0, 0, 1)
 a: (1, 0, 1)
@@ -69,6 +84,7 @@ d: (2, 1, 1)
 j: (0, 4, 0)
 h: (0, 3, 3)
 i: (0, 5, 2)
+\end{lstlisting}
 
 \subsection{Part 3: Happened-Before and Concurrency}
 
