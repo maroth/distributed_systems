@@ -1,0 +1,29 @@
+\section{Chandy-Misra Algorithm}
+
+The Chandy-Misra algorithm solves the following problem: Given an undirected, weighted graph G = (V, E) and a starting vertex of that graph v \in V, we compute the shortest paths from v to all other vertices in G. 
+Paths can have negative weights, and there may be cycles. This means that
+there might be negative cycles where a path might take arbitrary loops until reaching the destination, leading to a path cost of -\infinity . Chandy-Misra takes these negative cycles into account by using a two-phase system.
+The computational model of Chandy-Misra is that of a network of processes that communicate with each other by message passing. These processes do not necessarily know all other processes, and can only communicate with ones they do know. Each vertex E has exactly one process that has the goal of finding the shortest path to all other vertices. It knows all outgoing edges and their weights, but nothing else.
+The algorithm works in two phases, each with their own kinds of messages.
+Phase 1 length message: A two-tuple (s, p), where p is the identity of the sending process and s is a number. 
+Phase 1 acknowledgement message: No data, used to confirm the reception of a length message.
+Phase 2 has over? and over- messages. However, phase 2 is only needed for
+graphs that have negative vertex lengths, which we are ignoring during this exercise. Therefore, a description on phase 2 does not seem necessary.
+The algorithm starts at vertex 1, which sends out messages to all its
+neighbors. They in turn send messages out to all their neighbors, stretching across the graph. The messages then return back to the source, finding the shortest path in the process.
+In the end of the algorithm, each node has the next-to-last node of the
+shortest path from itself to the starting node saved as a reference.
+
+\section{Implementation in PopC++}
+The Chandy-Misra algorithm is implemented in PopC++ for this exercise.
+
+The shortpathobject is initialized with the number of neighbors and the initial distance to the start with the initComputation method. After that, one needs to set the neighbors with the setNeighbours method. After those setup steps, the computation can begin. To start the computation, call the startComputation on the initial node. It will then start sending messages to all other nodes until all the shortest paths are found.
+
+First, the initial node sends the dist message to all its neighbors, with the distance to the neighbor as parameter. When a node receives a dist message, it checks whether the received distance is an improvement. If it is - which will always be the case if it is the first dist message the node receives - it continues as according to the Chindy-Misra algorithm. This means it will send dist messages to its neighbors and wait for ack messages, or send an ack message to the source of the dist message.
+
+Similarly, when a node receives an ack message, it does what is described in the paper: Reduce the number of outstanding requests and send an ack message to the source of its dist message. When the initiator node received all ack messages, the computation is over. The initiator will then send stop messages to all its neighbors. They in turn receive the stop message, set their state to terminated and send stop messages to all of their neighbors and then delete their neighbors. This stops the program.
+
+We can see that the phase 2 of the algorithm to check for negative loops is not implemented. 
+
+
+
