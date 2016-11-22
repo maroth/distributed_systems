@@ -14,7 +14,8 @@ with open("torus.txt", "r") as f:
         distSum = 0
         ackSum = 0
         stopSum = 0
-        timeSum = 0
+        compTimeSum = 0
+        totalTimeSum = 0
         for entry in group:
             count += 1
             size = entry[0]
@@ -22,11 +23,13 @@ with open("torus.txt", "r") as f:
             distSum += int(entry[2])
             ackSum += int(entry[3])
             stopSum += int(entry[4])
-            timeSum += float(entry[6])
+            compTimeSum += float(entry[6])
+            totalTimeSum += float(entry[6])
         distSum /= count
         ackSum /= count
-        timeSum /= count
-        out = "{} {} {} {} {} {}".format(size, w, distSum, ackSum, stopSum, timeSum)
+        compTimeSum /= count
+        totalTimeSum /= count
+        out = "{} {} {} {} {} {} {}".format(size, w, distSum, ackSum, stopSum, compTimeSum, totalTimeSum)
         result[w].append(out)
 
 for w, outs in result.iteritems():
