@@ -82,7 +82,7 @@ int main(int argc, char **argv)
 
 	ShortPathObject* bTree[n];
 	int leafArr[n];
-	memset(leafArr, 0, (n -1));
+	memset(leafArr, 0, (n-1));
 	int leafCnt = 0;
 
 	try
@@ -99,27 +99,26 @@ int main(int argc, char **argv)
 		
 		for (int i=0; i<n; i++)
 		{
-			if((n-i-1) >= 2) { // has two children
+			if(n > (2 * i + 2)) { // has two children
 				bTree[i]->initComputation(n, 2);
-				bTree[i]->setNeighbours(0, *(bTree[i+1]), 1);
-				bTree[i]->setNeighbours(1, *(bTree[i+2]), 1);
-			} else if ((n-i-1) == 1) { // has one child
+				bTree[i]->setNeighbours(0, *(bTree[(2 * i) + 1]), 1);
+				bTree[i]->setNeighbours(1, *(bTree[(2 * i) + 2]), 1);
+			} else if (n > (2 * i + 1)) { // has one child
 				bTree[i]->initComputation(n, 1);
-				bTree[i]->setNeighbours(0, *(bTree[i+1]), 1);
+				bTree[i]->setNeighbours(0, *(bTree[(2 * i) + 1]), 1);
 			} else { // isLeaf
-				//bTree[i]->initComputation(n, 0);
-				bTree[i]->initComputation(n, 1);
+				bTree[i]->initComputation(n, 1); // In B+tree , leaves are connected in a singly linked-list
 				leafArr[leafCnt++] = i;
 			}
 		}
 
+		// Now connect leaves in linked-list
 		for(int i = 0; i<leafCnt - 1; i++) 
 		{
 			bTree[leafArr[i]]->setNeighbours(0, *(bTree[leafArr[i+1]]), 1);
 		}
 		bTree[leafArr[leafCnt - 1]]->setNeighbours(0, *(bTree[leafArr[0]]), 1);
   
-
 		// Start the computation 
 		printf("Computation for Binary Tree: N=%d,\n",n);
 		timer.Start();
