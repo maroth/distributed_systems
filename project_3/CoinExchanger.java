@@ -1,4 +1,6 @@
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
@@ -15,38 +17,64 @@ public class CoinExchanger extends ReceiverAdapter {
 	}
 
 	JChannel channel;
-	View currentView;
+	View currentView = null, prevView = null;
 	Address leader;
 	Address myself;
 	int coins = 3;
+	List<Address> unack_ids;
 	int unack_coins = 0;
 	Random rand = new Random();
 	ExchangerState state = ExchangerState.STARTING;
 
 	public void viewAccepted(View view) {
+		boolean updatedCoins = false;
 		synchronized (this) {
+			if(currentView != null) {
+				prevView = currentView;
+			} else {
+				prevView = view;
+			}
 			currentView = view;
-			leader = currentView.getMembers().get(0);
+		}
+		leader = currentView.getMembers().get(0);
+		List<Address> leftMembers = View.leftMembers(prevView, currentView);
+		if(!leftMembers.isEmpty()) {
+			for (Iterator<Address> iter = leftMembers.iterator(); iter.hasNext(); ) {
+				Address removed = iter.next();
+				synchronized(this) {
+			    		if((!unack_ids.isEmpty()) && unack_ids.remove(removed)) {
+			    			coins++;
+			    		}
+				}
+			}
+			updatedCoins = true;
+		}
+			
+		if(updatedCoins) {
+			updateThreadState();
 		}
 		System.out.println("** New view: " + currentView);
 	}
 
 	public void receive(Message msg) {
+		Address senderAddress = msg.getSrc();
 		String msgStr = (String)msg.getObject();
-		if(msgStr.contains("Req:")) {
-			if(this.state == ExchangerState.ENDED) {
-				return;
-			}
-			sendAck(msg.getSrc());
+		if(msgStr.contains("Req:") ) {
+			sendAck(senderAddress);
 		} else if(msgStr.contains("Ack:")) {
+			while(unack_ids.isEmpty());
 			synchronized (this) {
-				unack_coins--;
+				if(unack_ids.remove(senderAddress)) {
+					unack_coins = unack_ids.size();
+				}
 			}
-			System.out.println("** Sent coin to " + msg.getSrc() + ", now I have " + coins + ", unacknowledged coins " + unack_coins);
+			System.out.println("** Sent(with ack) coin to " + msg.getSrc() + ", now I have " + coins + ", unacknowledged coins " + unack_ids.size());
+			updateThreadState();
 		}
 	}
 
 	public void mainLoop() throws Exception {
+		unack_ids = new ArrayList<Address>();
 		channel = new JChannel();
 		channel.setReceiver(this);
 		channel.connect("CoinExchangerGroup");
@@ -54,45 +82,55 @@ public class CoinExchanger extends ReceiverAdapter {
 		System.out.println("** Transport layer TP: " + tp);
 		System.out.println("** Total sent by TP: " + tp.getNumMessagesSent());
 		System.out.println("** Total received by TP: " + tp.getNumMessagesReceived());
+		System.out.println("** Size of unack_ids: " + unack_ids.size());
 
 		while (state != ExchangerState.ENDED) {
 			sendCoin();
-			updateThreadState();
 			Thread.sleep(1000);
+			updateThreadState();
 		}
 		System.out.println("** Total sent by TP: " + tp.getNumMessagesSent());
 		System.out.println("** Total received by TP: " + tp.getNumMessagesReceived());
-		int total_coins = coins + unack_coins;
-		System.out.println("** Exiting, I have: " + coins + " coins " + "unack_coins " + unack_coins + " total =" + total_coins);
+		int total_coins = coins +  unack_ids.size() ;
+		System.out.println("** Exiting, I have: " + coins + " coins " + "unack_coins " + unack_ids.size() + " total =" + total_coins);
 		channel.close();
 	}
 
 	public void sendCoin() {
 		List<Address> members = currentView.getMembers();
-		Address luckyGuy = members.get(rand.nextInt(members.size()));
+		if(members.size() > 1 && coins > 0) {
+			Address luckyGuy = members.get(rand.nextInt(members.size()));
 
-		Message msg = new Message(luckyGuy, null, "Req: Coin");
-		try {
-			channel.send(msg);
-			synchronized (this) {
-				coins--;
-				unack_coins++;
+			Message msg = new Message(luckyGuy, null, "Req: Coin");
+			try {
+				channel.send(msg);
+				synchronized (this) {
+					coins--;
+					unack_ids.add(luckyGuy);
+					unack_coins++;
+				}
+				System.out.println("** Sent coin to " + luckyGuy + ", now I have " + coins + ",  unacknowledged coins " + unack_ids.size());
+			} catch (Exception e) {
+				e.printStackTrace();
 			}
-			System.out.println("** Sent coin to " + luckyGuy + ", now I have " + coins + ",  unacknowledged coins " + unack_coins);
-		} catch (Exception e) {
-			e.printStackTrace();
 		}
-
 	}
 
 	public void sendAck(Address dst) {
 		Message msg = new Message(dst, null, "Ack: Coin");
+		boolean terminate = false;
 		try {
-			channel.send(msg);
-			synchronized (this) {
-				coins++;
+			if(this.state == ExchangerState.ENDED) {
+				terminate = true;
+			} else {
+				channel.send(msg);
+				synchronized (this) {
+					coins++;
+				}
 			}
-			System.out.println("** Got coin from " + dst + ", now I have " + coins + ",  unacknowledged coins " + unack_coins);
+			if(!terminate) {
+				System.out.println("** Got coin from " + dst + ", now I have " + coins + ",  unacknowledged coins " + unack_ids.size());
+			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -112,7 +150,7 @@ public class CoinExchanger extends ReceiverAdapter {
 			hasInput = (System.in.available() > 0);
 		} catch (IOException e) {
 		}
-		if (coins <= 0 || hasInput) {
+		if ((coins <= 0 && (unack_ids.size()==0)) || hasInput) {
 			state = ExchangerState.ENDED;
 		}
 	}
