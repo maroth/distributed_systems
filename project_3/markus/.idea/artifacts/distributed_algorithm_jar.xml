@@ -1,0 +1,9 @@
+<component name="ArtifactManager">
+  <artifact type="jar" build-on-make="true" name="distributed_algorithm:jar">
+    <output-path>$PROJECT_DIR$/</output-path>
+    <root id="archive" name="distributed_algorithm.jar">
+      <element id="module-output" name="markus" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/../jgroups-3.6.6.Final.jar" path-in-jar="/" />
+    </root>
+  </artifact>
+</component>
