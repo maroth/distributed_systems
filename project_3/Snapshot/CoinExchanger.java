@@ -5,6 +5,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Collection;
 
 import org.jgroups.Address;
 import org.jgroups.JChannel;
@@ -19,14 +20,13 @@ public class CoinExchanger extends ReceiverAdapter {
 	}
 	
 	public class Snapshot {
-		String snapshotId;
-		ExchangerState snapState = ExchangerState.STARTING;
-		int coins = 0;
-		List<Address> unack_ids = null;
-		View currentView;
-		View prevView;
-		Map<Address, Integer> coinMap;
-		Map<Address, Integer> ackMap;
+		String snapshotId; // Derived from initiator process's address 
+		ExchangerState snapState = ExchangerState.STARTING; 
+		int coins = 0;			// No. of coins 
+		List<Address> unack_ids = null; // Current number list of unacknowledged coins
+		Map<Address, Boolean> recordedChannelState;	// State of channel associted with given member
+		Map<Address, Integer> coinMap;		// Coins in channel between address and self, i.e., (in transit) coins
+		Map<Address, Integer> ackMap;		// Acknowledgements in channel between address and self, i.e., (in transit) acks
 	}
 	
 	JChannel channel;
@@ -42,7 +42,6 @@ public class CoinExchanger extends ReceiverAdapter {
 	int unack_coins = 0;
 		
 	// Variables for Snapshot algorithm
-	List<Address> monitorChannel;
 	List<Snapshot> snapShots = null;
 	boolean monitoring = false;
 	boolean snapshot = false;
@@ -67,10 +66,8 @@ public class CoinExchanger extends ReceiverAdapter {
 			    			coins++;
 			    		}
 					if(monitoring) {
-						if(monitorChannel.contains(removed)) {
-							monitorChannel.remove(removed);
-						}
-						if(monitorChannel.size() == 0) {
+						Collection<Boolean> vals = snapShots.get(0).recordedChannelState.values();
+						if(!vals.contains(false)) {
 							monitoring = false;
 						}
 					}
@@ -96,7 +93,7 @@ public class CoinExchanger extends ReceiverAdapter {
 			synchronized (this) {
 				if(unack_ids.remove(senderAddress)) {
 					unack_coins = unack_ids.size();
-					if(monitoring) {
+					if(monitoring && (snapShots.get(0).recordedChannelState.get(senderAddress) == false)) {
 						if(snapShots.get(0).ackMap.containsKey(senderAddress)) {
 							int oldVal = snapShots.get(0).ackMap.get(senderAddress);
 							snapShots.get(0).ackMap.replace(senderAddress, oldVal, oldVal + 1);
@@ -115,17 +112,16 @@ public class CoinExchanger extends ReceiverAdapter {
 				String snapId = msgStr.substring(i + 7);
 				synchronized(this) {
 					recordState(snapId.trim());
-					monitorChannel = new ArrayList<Address>();
 					sendMarkerToAll(null, msgStr);
+					snapShots.get(0).recordedChannelState.put(senderAddress, true);
 					monitoring = true;
 					snapshot = true;
 				}
 			} else { // Record state of channel
 				synchronized(this) {
-					if(monitorChannel.contains(senderAddress)) {
-						monitorChannel.remove(senderAddress);
-					}
-					if(monitorChannel.size() == 0) {
+					snapShots.get(0).recordedChannelState.put(senderAddress, true);
+					Collection<Boolean> vals = snapShots.get(0).recordedChannelState.values();
+					if(!vals.contains(false)) {
 						monitoring = false;
 					}
 				}
@@ -152,7 +148,6 @@ public class CoinExchanger extends ReceiverAdapter {
 			Thread.sleep(1000);
 			updateThreadState();
 			List<Address> members = currentView.getMembers();
-			System.out.println("** Leader address: " + leader); 
 			if(self.equals(leader)) {
 				if(!snapshot && coins == 2) {
 					System.out.println("\t** Snapshot started");
@@ -162,6 +157,10 @@ public class CoinExchanger extends ReceiverAdapter {
 			}
 		}
 
+		System.out.println("** Total sent by TP: " + tp.getNumMessagesSent());
+		System.out.println("** Total received by TP: " + tp.getNumMessagesReceived());
+		int total_coins = coins +  unack_ids.size() ;
+		System.out.println("** Exiting, I have: " + coins + " coins " + "unack_coins " + unack_ids.size() + " total =" + total_coins+"\n");
 		if(snapShots != null) {	
 			System.out.println("** Printing Snapshot: Snapshot id:" + snapShots.get(0).snapshotId + " Coins: " + snapShots.get(0).coins);
 			if(snapShots.get(0).unack_ids != null) {
@@ -175,25 +174,28 @@ public class CoinExchanger extends ReceiverAdapter {
 			}
 				
 			System.out.println("\t** Channel state ");
-			System.out.println("\t** Acknowledgements");
-			Iterator it = snapShots.get(0).ackMap.entrySet().iterator();
-			while (it.hasNext()) {
-				Map.Entry pair = (Map.Entry)it.next();
-				System.out.println("\t** " + pair.getKey()  + " = " + pair.getValue());
+			if(snapShots.get(0).ackMap.isEmpty()) {
+				System.out.println("\t** Acknowledgements = 0");
+			} else {
+				Iterator it = snapShots.get(0).ackMap.entrySet().iterator();
+				while (it.hasNext()) {
+					Map.Entry pair = (Map.Entry)it.next();
+					System.out.println("\t** " + pair.getKey()  + " = " + pair.getValue());
+				}
 			}
-			System.out.println("\t** Coins");
-			Iterator it2 = snapShots.get(0).coinMap.entrySet().iterator();
-			while (it2.hasNext()) {
-				Map.Entry pair = (Map.Entry)it2.next();
-				System.out.println("\t** " + pair.getKey() + " = " + pair.getValue());
+			if(snapShots.get(0).coinMap.isEmpty()) {
+				System.out.println("\t** Coins = 0");
+			} else {
+				System.out.println("\t** Coins");
+				Iterator it2 = snapShots.get(0).coinMap.entrySet().iterator();
+				while (it2.hasNext()) {
+					Map.Entry pair = (Map.Entry)it2.next();
+					System.out.println("\t** " + pair.getKey() + " = " + pair.getValue());
+				}
 			}
 		}
 			
 		
-		System.out.println("** Total sent by TP: " + tp.getNumMessagesSent());
-		System.out.println("** Total received by TP: " + tp.getNumMessagesReceived());
-		int total_coins = coins +  unack_ids.size() ;
-		System.out.println("** Exiting, I have: " + coins + " coins " + "unack_coins " + unack_ids.size() + " total =" + total_coins);
 		channel.close();
 	}
 
@@ -222,14 +224,16 @@ public class CoinExchanger extends ReceiverAdapter {
 		boolean terminate = false;
 		if(monitoring) {
 			synchronized(this) {
-				if(snapShots.get(0).coinMap.containsKey(dst)) {
-					int oldVal = snapShots.get(0).coinMap.get(dst);
-					snapShots.get(0).coinMap.replace(dst, oldVal, oldVal + 1);
-				} else {
-					snapShots.get(0).coinMap.put(dst, 1);
+				if(snapShots.get(0).recordedChannelState.get(dst) == false) {
+					if(snapShots.get(0).coinMap.containsKey(dst)) {
+						int oldVal = snapShots.get(0).coinMap.get(dst);
+						snapShots.get(0).coinMap.replace(dst, oldVal, oldVal + 1);
+					} else {
+						snapShots.get(0).coinMap.put(dst, 1);
+					}						
 				}
-			}						
-		}
+			}
+		}						
 		try {
 			if(this.state == ExchangerState.ENDED) {
 				terminate = true;
@@ -274,14 +278,13 @@ public class CoinExchanger extends ReceiverAdapter {
 		Snapshot curSnap = new Snapshot();
 		curSnap.snapshotId = snapShotId;
 		curSnap.coins = coins;
-		curSnap.currentView = currentView;
-		curSnap.prevView = prevView;
 		if(unack_ids.size() > 0) {
 			curSnap.unack_ids.addAll(unack_ids);
 		}
 		curSnap.snapState = ExchangerState.RUNNING;
 		curSnap.coinMap = new HashMap<Address, Integer>();
 		curSnap.ackMap = new HashMap<Address, Integer>();
+		curSnap.recordedChannelState = new HashMap<Address, Boolean>();
 		snapShots.add(curSnap);
 	}
 	
@@ -289,17 +292,16 @@ public class CoinExchanger extends ReceiverAdapter {
 	{
 		Address self = channel.getAddress();
 		
-		monitorChannel = new ArrayList<Address>();
 		synchronized(this) {
 			monitoring = true;
 			String snapShotId = "Snapshot" + self.toString();
 			recordState(snapShotId);
-			sendMarkerToAll(self, ("Marker:" + snapShotId));
+			sendMarkerToAll(self, snapShotId);
 		}
 		
 	}
 	
-	public void sendMarkerToAll(Address self, String marker) {
+	public void sendMarkerToAll(Address self, String snapshotId) {
 		Address curMember;
 		if(self == null)
 			self = channel.getAddress();
@@ -310,9 +312,9 @@ public class CoinExchanger extends ReceiverAdapter {
 			if(curMember.equals(self)) {
 				continue;
 			}
-			Message msg = new Message(curMember, null, marker);
+			Message msg = new Message(curMember, null, ("Marker: " + snapshotId));
 			try {
-				monitorChannel.add(curMember);
+				snapShots.get(0).recordedChannelState.put(curMember, false);
 				channel.send(msg);
 				System.out.println("** Marker to " + curMember);
 			} catch (Exception e) {
